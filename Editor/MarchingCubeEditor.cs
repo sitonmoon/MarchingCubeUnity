@@ -91,20 +91,20 @@ public class MarchingCubeEditor : Editor
                         Vector3[] cubePts = { pt1, pt2, pt3, pt4, pt5, pt6, pt7, pt8 };
 
                         List<Vector3> objverts = ss[hash]; //obj verts in cell
-                        for (int ii = 0; ii < 8; ii++)
+                        //for (int ii = 0; ii < 8; ii++)
                         {
                             float dd = 0;
                             foreach (var vert in objverts)
                             {
-                                dd += Vector3.Magnitude(vert - cubePts[ii]);
+                                dd += Vector3.Magnitude(vert - start);
                             }
 							dd = dd / objverts.Count; 
                             if (dd > 0 && dd < densityThreshold )
                             {
 								Handles.color = new Color(dd, 0.5f, 0.0f);
 								//Handles.DrawLine(vert, cubePts[ii]); 
-                                Handles.SphereHandleCap(0,cubePts[ii], Quaternion.identity,0.2f, EventType.Repaint);
-                                Handles.Label(cubePts[ii], ii.ToString());
+                                Handles.SphereHandleCap(0, start, Quaternion.identity, 0.2f, EventType.Repaint);
+                                Handles.Label(start, start.ToString());
                             }
                         }
                     }
