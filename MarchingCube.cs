@@ -269,6 +269,8 @@ public class MarchingCube : MonoBehaviour
     };
     #endregion
 
+
+    BitMap3d bmp;
     private static readonly int prime1 = 0xAB1D261;
     private static readonly int prime2 = 0x16447CD5;
     private static readonly int prime3 = 0x4BBF17D;
@@ -281,17 +283,87 @@ public class MarchingCube : MonoBehaviour
         return prime1 * x + prime2 * y + prime3 * z;
     }
 
-    // Start is called before the first frame update
-    void Start()
+    public MarchingCube(BitMap3d bitmap)
     {
+        this.bmp = bitmap;
+    }
+    public virtual bool IsInside(int x, int y, int z)
+    {
+        if (x <= 0 || y <= 0 || z <= 0 || x > bmp.width || y > bmp.height || z > bmp.depth)
+            return false;
+        else
+        {
+            return bmp.GetPixel(x, y, z) == BitMap3d.WHITE;
+        }
+    }//judge if a voxel is inside the surface
 
+    public byte GetConfig(ref Cube cell)
+    {
+        byte value = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            //if (IsInside(cubeImageIndices[i].X, cubeImageIndices[i].Y, cubeImageIndices[i].Z))
+            {
+                value |= Cube.PointIndexToFlag[i];
+            }
+        }
+        return value;
+    }//get copnfig
+
+    public Mesh GeneratorSurface()
+    {
+        MeshBuilder_FloatVertex builder = new MeshBuilder_FloatVertex(bmp.width + 2, bmp.height + 2, bmp.depth + 2);// this class can build mesh from independent triangles
+        for (int k = 0; k < bmp.depth - 1; k++)
+        {
+            for (int j = 0; j < bmp.height - 1; j++)
+            {
+                for (int i = 0; i < bmp.width - 1; i++)
+                {
+                    Cube cell = new Cube(i, j, k);//build Cube for Cell at i j k
+                    byte config = GetConfig(ref cell);// get byte config for the cell
+                    ExtractTriangles(ref cell, config, builder);// extract triangles from cell and push into
+                }
+            }
+        }
+        return builder.GetMesh();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
 
-    }
+    private void ExtractTriangles(ref Cube cube, byte value, MeshBuilder_FloatVertex builder)
+    {
+        if (MarchingCube.TriTable[value, 0] != -1)
+        {
+            int index = 0;
+            while (MarchingCube.TriTable[value, index] != -1)
+            {
+                int e0index = MarchingCube.TriTable[value, index];
+                int e1index = MarchingCube.TriTable[value, index + 1];
+                int e2index = MarchingCube.TriTable[value, index + 2];
+
+                Int16Triple e0p0 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e0index, 0]];
+                Int16Triple e0p1 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e0index, 1]];
+
+                Int16Triple e1p0 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e1index, 0]];
+                Int16Triple e1p1 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e1index, 1]];
+
+                Int16Triple e2p0 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e2index, 0]];
+                Int16Triple e2p1 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e2index, 1]];
+
+                Point3d e0pm = GetIntersetedPoint(e0p0, e0p1);
+                Point3d e1pm = GetIntersetedPoint(e1p0, e1p1);
+                Point3d e2pm = GetIntersetedPoint(e2p0, e2p1);
+
+                builder.AddTriangle(e0pm, e1pm, e2pm);
+
+                index += 3;
+            }
+        }
+    }//extract triangles and put them into mesh builder
+
+    private Point3d GetIntersetedPoint(Int16Triple p0, Int16Triple p1)
+    {
+        return new Point3d((p0.X + p1.X) / 2.0f, (p0.Y + p1.Y) / 2.0f, (p0.Z + p1.Z) / 2.0f);
+    }//findInterseted point
 }
 
 
@@ -413,7 +485,7 @@ class MeshBuilder_FloatVertex
 }
 
 //是MCProcesser的实现，首先要定义Cube类，在Cube类中定义了一些静态的数据，用于快速查找体素和边对应的信息
-struct Int16Triple
+public struct Int16Triple
 {
     public int X;
     public int Y;
@@ -426,7 +498,7 @@ struct Int16Triple
     }
 }
 
-class Cube
+public class Cube
 {
     public static byte VULF = 1 << 0;
     public static byte VULB = 1 << 1;
@@ -487,6 +559,8 @@ class Cube
         }
     }//使用基准体素坐标初始化Cube
     public Int16Triple[] cubeImageIndices = new Int16Triple[8];//用于存储8个体素的坐标
+
+
 }
 
 //用于输出PLY网格文件的类
@@ -571,89 +645,4 @@ public class BitMap3d
         fs.Read(data, 0, width * height * depth);
         fs.Close();
     }
-}
-
-class MCProcessor
-{
-    BitMap3d bmp;
-    public MCProcessor(BitMap3d bitmap)
-    {
-        this.bmp = bitmap;
-    }
-    public virtual bool IsInside(int x, int y, int z)
-    {
-        if (x <= 0 || y <= 0 || z <= 0 || x > bmp.width || y > bmp.height || z > bmp.depth)
-            return false;
-        else
-        {
-            return bmp.GetPixel(x, y, z) == BitMap3d.WHITE;
-        }
-    }//judge if a voxel is inside the surface
-
-    public Mesh GeneratorSurface()
-    {
-        MeshBuilder_FloatVertex builder = new MeshBuilder_FloatVertex(bmp.width + 2, bmp.height + 2, bmp.depth + 2);// this class can build mesh from independent triangles
-        for (int k = 0; k < bmp.depth - 1; k++)
-        {
-            for (int j = 0; j < bmp.height - 1; j++)
-            {
-                for (int i = 0; i < bmp.width - 1; i++)
-                {
-                    Cube cell = new Cube(i, j, k);//build Cube for Cell at i j k
-                    byte config = GetConfig(ref cell);// get byte config for the cell
-                    ExtractTriangles(ref cell, config, builder);// extract triangles from cell and push into
-                }
-            }
-        }
-        return builder.GetMesh();
-    }
-
-    private byte GetConfig(ref Cube cube)
-    {
-        byte value = 0;
-        for (int i = 0; i < 8; i++)
-        {
-            if (IsInside(cube.cubeImageIndices[i].X, cube.cubeImageIndices[i].Y, cube.cubeImageIndices[i].Z))
-            {
-                value |= Cube.PointIndexToFlag[i];
-            }
-        }
-        return value;
-    }//get copnfig
-
-    private void ExtractTriangles(ref Cube cube, byte value, MeshBuilder_FloatVertex builder)
-    {
-        if (MarchingCube.TriTable[value, 0] != -1)
-        {
-            int index = 0;
-            while (MarchingCube.TriTable[value, index] != -1)
-            {
-                int e0index = MarchingCube.TriTable[value, index];
-                int e1index = MarchingCube.TriTable[value, index + 1];
-                int e2index = MarchingCube.TriTable[value, index + 2];
-
-                Int16Triple e0p0 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e0index, 0]];
-                Int16Triple e0p1 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e0index, 1]];
-
-                Int16Triple e1p0 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e1index, 0]];
-                Int16Triple e1p1 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e1index, 1]];
-
-                Int16Triple e2p0 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e2index, 0]];
-                Int16Triple e2p1 = cube.cubeImageIndices[Cube.EdgeIndexToEdgeVertexIndex[e2index, 1]];
-
-                Point3d e0pm = GetIntersetedPoint(e0p0, e0p1);
-                Point3d e1pm = GetIntersetedPoint(e1p0, e1p1);
-                Point3d e2pm = GetIntersetedPoint(e2p0, e2p1);
-
-                builder.AddTriangle(e0pm, e1pm, e2pm);
-
-                index += 3;
-            }
-        }
-    }//extract triangles and put them into mesh builder
-
-    private Point3d GetIntersetedPoint(Int16Triple p0, Int16Triple p1)
-    {
-        return new Point3d((p0.X + p1.X) / 2.0f, (p0.Y + p1.Y) / 2.0f, (p0.Z + p1.Z) / 2.0f);
-    }//findInterseted point
 }

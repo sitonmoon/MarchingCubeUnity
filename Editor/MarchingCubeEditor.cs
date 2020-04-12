@@ -76,20 +76,11 @@ public class MarchingCubeEditor : Editor
                 {
                     Vector3 start = new Vector3(k, j, i);
                     int hash = mc.MakeHash(start);
+
                     float dens = 0;
                     if (ss.ContainsKey(hash))
                     {   //verts inside cellgrid, calculate density
-                        //8 point in cube
-                        Vector3 pt1 = start;
-                        Vector3 pt2 = start + new Vector3(0,0,1);
-                        Vector3 pt3 = start + new Vector3(0,1,0);
-                        Vector3 pt4 = start + new Vector3(1,0,0);
-                        Vector3 pt5 = start + new Vector3(0,1,1);
-                        Vector3 pt6 = start + new Vector3(1,0,1);
-                        Vector3 pt7 = start + new Vector3(1,1,0);
-                        Vector3 pt8 = start + new Vector3(1,1,1);
-                        Vector3[] cubePts = { pt1, pt2, pt3, pt4, pt5, pt6, pt7, pt8 };
-
+                     
                         List<Vector3> objverts = ss[hash]; //obj verts in cell
                         //for (int ii = 0; ii < 8; ii++)
                         {
@@ -99,7 +90,7 @@ public class MarchingCubeEditor : Editor
                                 dd += Vector3.Magnitude(vert - start);
                             }
 							dd = dd / objverts.Count; 
-                            if (dd > 0 && dd < densityThreshold )
+                            if (dd > 0 && dd < densityThreshold)
                             {
 								Handles.color = new Color(dd, 0.5f, 0.0f);
 								//Handles.DrawLine(vert, cubePts[ii]); 
